@@ -21,7 +21,7 @@ device = "cpu"
 
 #ファイルの読み込み
 pre_data = np.genfromtxt(
-    "./test.csv",
+    "./csv_data/test.csv",
     skip_header=1,
     usecols=[3, 4, 5, 6, 7],
     delimiter=","  
@@ -61,7 +61,6 @@ class DNNmodel(nn.Module):
         x = self.fc2(x)
         # return nn.LogSoftmax(dim=1)(x)
         return x
-    
 
 model = DNNmodel().to(device)
 summary(model, input_size=(8, 4))
@@ -77,7 +76,7 @@ num_epochs = 50
 # 学習時と検証時で分けるためディクショナリを用意
 dataloaders_dict = {
     'train': train_dataloader,
-    'val': valid_dataloader
+    'val'  : valid_dataloader
 }
 
 def train_model(model, train_loader, loss_function, optimizer):

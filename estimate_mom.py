@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import statistics
 from sklearn.model_selection import train_test_split
 import sys
 
@@ -17,38 +18,61 @@ import torch.optim as optim
 from torchinfo import summary
 
 # GNN
+import networkx as nx
 from torch_geometric.data import Data
+from torch_geometric.utils import to_networkx
 
 
 # cpu, gpuの設定
 device = "cpu"
 
+class DataManager():
+    def __init__(self, path):
+        self.path = path
+        self.data = np.genfromtxt(
+            path,
+            skip_header=1,
+            delimiter=","
+        )
 
-def convert_graph_data(pos_data, features, n_edge = 3): # should be len(pos_data) > n_egde+1
-    edge_from = []
-    edge_to   = []
-    for i, point in enumerate(pos_data):
-        distance = np.linalg.norm( pos_data - np.full_like(pos_data, point), axis = 1) # calc. Euclidean distance
-        edge_from += [i]*n_edge
-        edge_to   += np.argsort(distance)[1:n_edge+1].tolist()
-    edge_index = torch.tensor([edge_from, edge_to])
-    return Data(x=torch.tensor(features), y=None, edge_index=edge_index)
+    def convert_graph_data(self, pos_data, features, n_edge = 3): # should be len(pos_data) > n_egde+1
+        edge_from = []
+        edge_to   = []
+        for i, point in enumerate(pos_data):
+            distance = np.linalg.norm( pos_data - np.full_like(pos_data, point), axis = 1) # calc. Euclidean distance
+            edge_from += [i]*n_edge
+            edge_to   += np.argsort(distance)[1:n_edge+1].tolist()
+        edge_index = torch.tensor([edge_from, edge_to])
+        return Data(x=torch.tensor(features), y=None, edge_index=edge_index)
 
-#ファイルの読み込み
-pre_data = np.genfromtxt(
-    "./csv_data/gen7208.csv",
-    skip_header=1,
-    delimiter=","  
-)
+    def load_data(self):
+        index = 1
+        pos_data = []
+        features = []
+        mom      = []
+        graph_data = []
+        ave_mom    = []
+        for i in tqdm(range(len(self.data))):
+            if self.data[i][0] == index:
+                pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]])
+                features.append([self.data[i][2], self.data[i][4]])
+                mom.append(self.data[i][5])
+            else:
+                if len(pos_data) > 5:
+                    graph_data.append( self.convert_graph_data(np.array(pos_data), features) )
+                    ave_mom.append( statistics.mean(mom) )
+                index += 1
+                pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]]
+                features = [[self.data[i][2], self.data[i][4]]]
+                mom = [self.data[i][5]]
 
+        return graph_data, ave_mom
 
-data = pre_data[ pre_data[:, 0] != 0 ][:, :-1]
-label = pre_data[ pre_data[:, 0] != 0 ][:, -1]
-
-sys.exit()
+gen7208 = DataManager("./csv_data/gen7208.csv")
+data, mom = gen7208.load_data()
 
 # 学習データと検証データに分割
-x_train, x_valid, t_train, t_valid = train_test_split(data, label, shuffle=True, test_size=0.3)
+x_train, x_valid, t_train, t_valid = train_test_split(data, mom, shuffle=True, test_size=0.3)
 
 # Tensor型に変換, GPUで使えるっぽいのでnp.array->tensorにできるんならしたらいいと思う
 x_train = torch.from_numpy(x_train).float().to(device)
@@ -83,8 +107,8 @@ model = DNNmodel().to(device)
 summary(model, input_size=(8, 4))
 
 # 損失関数の定義
-criterion = nn.CrossEntropyLoss()
-# criterion = nn.NLLLoss()
+# criterion = nn.CrossEntropyLoss()
+criterion = nn.NLLLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # エポック数

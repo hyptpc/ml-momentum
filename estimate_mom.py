@@ -5,6 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import statistics
 from sklearn.model_selection import train_test_split
+import pprint
 import sys
 
 # pytouch
@@ -21,7 +22,6 @@ from torchinfo import summary
 import networkx as nx
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
-
 
 # cpu, gpuの設定
 device = "cpu"
@@ -71,14 +71,22 @@ class DataManager():
 gen7208 = DataManager("./csv_data/gen7208.csv")
 data, mom = gen7208.load_data()
 
+data = tuple(data)
+print(data.size)
+
+pprint.pprint(data)
+
+# sys.exit()
+
+
 # 学習データと検証データに分割
 x_train, x_valid, t_train, t_valid = train_test_split(data, mom, shuffle=True, test_size=0.3)
 
 # Tensor型に変換, GPUで使えるっぽいのでnp.array->tensorにできるんならしたらいいと思う
-x_train = torch.from_numpy(x_train).float().to(device)
-t_train = torch.from_numpy(t_train).long().to(device)
-x_valid = torch.from_numpy(x_valid).float().to(device)
-t_valid = torch.from_numpy(t_valid).long().to(device)
+# x_train = torch.tensor(x_train).to(device)
+t_train = torch.tensor(t_train, dtype=float).to(device)
+# x_valid = torch.tensor(x_valid).to(device)
+t_valid = torch.tensor(t_valid, dtype=float).to(device)
 
 # dataset の作成
 train_dataset = TensorDataset(x_train, t_train)

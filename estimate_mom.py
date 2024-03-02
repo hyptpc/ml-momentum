@@ -7,24 +7,26 @@ import statistics
 from sklearn.model_selection import train_test_split
 import pprint
 import sys
+import random
 
 # pytouch
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.utils.data import DataLoader, TensorDataset
+# from torch.utils.data import DataLoader
+from torch.utils.data import TensorDataset
 from torchvision import transforms
 import torch.optim as optim
-# kerasっぽいmodel summaryの表示用
-from torchinfo import summary
 
 # GNN
 import networkx as nx
-from torch_geometric.data import Data
+from torch_geometric.data import Data, Dataset
+from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_networkx
+from torch_geometric.nn import GCNConv, global_mean_pool, summary
 
 # cpu, gpuの設定
-device = "cpu"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class DataManager():
     def __init__(self, path):
@@ -38,20 +40,21 @@ class DataManager():
     def convert_graph_data(self, pos_data, features, n_edge = 3): # should be len(pos_data) > n_egde+1
         edge_from = []
         edge_to   = []
+        edge_attr = []
         for i, point in enumerate(pos_data):
             distance = np.linalg.norm( pos_data - np.full_like(pos_data, point), axis = 1) # calc. Euclidean distance
             edge_from += [i]*n_edge
             edge_to   += np.argsort(distance)[1:n_edge+1].tolist()
+            edge_attr += distance[ np.argsort(distance)[1:n_edge+1] ].tolist()
         edge_index = torch.tensor([edge_from, edge_to])
-        return Data(x=torch.tensor(features), y=None, edge_index=edge_index)
+        return Data(x=torch.tensor(features), y=None, edge_index=edge_index, edge_attr=edge_attr)
 
     def load_data(self):
         index = 1
         pos_data = []
         features = []
         mom      = []
-        graph_data = []
-        ave_mom    = []
+        data     = []
         for i in tqdm(range(len(self.data))):
             if self.data[i][0] == index:
                 pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]])
@@ -59,64 +62,56 @@ class DataManager():
                 mom.append(self.data[i][5])
             else:
                 if len(pos_data) > 5:
-                    graph_data.append( self.convert_graph_data(np.array(pos_data), features) )
-                    ave_mom.append( statistics.mean(mom) )
+                    data.append([ 
+                        self.convert_graph_data(np.array(pos_data), features), 
+                        statistics.mean(mom)
+                    ])
                 index += 1
                 pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]]
                 features = [[self.data[i][2], self.data[i][4]]]
                 mom = [self.data[i][5]]
 
-        return graph_data, ave_mom
+        return data
+
+def shuffle_list_data(data, ratio = 0.3):
+    n_data = len(data)
+    n_valid_data = int( n_data*ratio )
+    shuffled_data = random.sample(data, n_data)
+    return shuffled_data[n_valid_data:], shuffled_data[:n_valid_data]
 
 gen7208 = DataManager("./csv_data/gen7208.csv")
-data, mom = gen7208.load_data()
-
-data = tuple(data)
-print(data.size)
-
-pprint.pprint(data)
-
-# sys.exit()
-
+data = gen7208.load_data()
 
 # 学習データと検証データに分割
-x_train, x_valid, t_train, t_valid = train_test_split(data, mom, shuffle=True, test_size=0.3)
-
-# Tensor型に変換, GPUで使えるっぽいのでnp.array->tensorにできるんならしたらいいと思う
-# x_train = torch.tensor(x_train).to(device)
-t_train = torch.tensor(t_train, dtype=float).to(device)
-# x_valid = torch.tensor(x_valid).to(device)
-t_valid = torch.tensor(t_valid, dtype=float).to(device)
-
-# dataset の作成
-train_dataset = TensorDataset(x_train, t_train)
-valid_dataset = TensorDataset(x_valid, t_valid)
+train_data, valid_data = shuffle_list_data(data)
 
 # dataloader の作成（ミニバッチ処理のため）
 batch_size = 8
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+valid_dataloader = DataLoader(valid_data, batch_size=batch_size, shuffle=False)
 
 # modelの作成とその中身確認
-class DNNmodel(nn.Module):
+class GNNmodel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(4, 50)
-        self.fc2 = nn.Linear(50, 2)
-    
-    def forward(self, x):
-        x = self.fc1(x)
+        self.conv1 = GCNConv(2, 16)
+        self.conv2 = GCNConv(16, 32)
+        self.linear = nn.Linear(32,1)
+
+    def forward(self, data):
+        x, edge_index = data.x.float(), data.edge_index
+        x = self.conv1(x, edge_index)
         x = F.relu(x)
-        x = self.fc2(x)
-        # return nn.LogSoftmax(dim=1)(x)
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        x = global_mean_pool(x, data.batch)
+        x = self.linear(x)
         return x
 
-model = DNNmodel().to(device)
-summary(model, input_size=(8, 4))
+model = GNNmodel().to(device)
 
 # 損失関数の定義
-# criterion = nn.CrossEntropyLoss()
-criterion = nn.NLLLoss()
+criterion = nn.MSELoss().to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # エポック数
@@ -133,7 +128,9 @@ def train_model(model, train_loader, loss_function, optimizer):
     train_acc  = 0.0
     num_train  = 0
     model.train() # train mode
-    for inputs, labels in train_loader:
+    for inputs, pre_labels in train_loader:
+        inputs.to(device=device)
+        labels = pre_labels.unsqueeze(dim=1).to(device=device)
         num_train += len(labels) # count batch number
         optimizer.zero_grad() # initialize grad, ここで初期化しないと過去の重みがそのまま足される
         #1 forward
@@ -159,7 +156,9 @@ def valid_model(model, valid_loader, loss_function):
     num_valid  = 0
     model.eval() # eval mode
     with torch.no_grad(): # invalidate grad
-        for inputs, labels in valid_loader:
+        for inputs, pre_labels in valid_loader:
+            inputs.to(device=device)    
+            labels = pre_labels.unsqueeze(dim=1).to(device=device)
             num_valid += len(labels)
             outputs = model(inputs)
             loss = loss_function(outputs, labels)
@@ -190,4 +189,8 @@ def learning(model, train_loader, valid_loader, loss_function, optimizer, n_epoc
     }
     return dict_data
 
-learning( model, train_dataloader, valid_dataloader, criterion, optimizer, 50 )
+dict_data = learning( model, train_dataloader, valid_dataloader, criterion, optimizer, 100 )
+
+plt.plot(dict_data["train"]["loss"])
+plt.plot(dict_data["valid"]["loss"])
+plt.show()

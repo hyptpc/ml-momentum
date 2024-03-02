@@ -4,3 +4,4 @@ src/*
 include/macro.hh
 include/nagao_macro.hh
 include/variable.hh
+csv_data/gen7208.csv

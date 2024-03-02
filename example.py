@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+import sys
 
 # pytouch
 import torch
@@ -17,7 +18,7 @@ import torch.optim as optim
 from torchinfo import summary
 
 # cpu, gpuの設定
-device = "cpu"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 #ファイルの読み込み
 pre_data = np.genfromtxt(

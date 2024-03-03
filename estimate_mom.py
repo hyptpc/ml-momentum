@@ -6,6 +6,8 @@ import statistics
 import sys
 import random
 import time
+from discordwebhook import Discord
+discord = Discord(url="https://discord.com/api/webhooks/1195721561018220544/g8IqwcoYDotpcmXTrEgB3o-Bnc_GXsAU_lZzAm7zBZtWi_pjLi3z0LAAtbXxgoI48Tfa")
 
 # pytouch
 import torch
@@ -56,8 +58,9 @@ class DataManager():
         for i in tqdm(range(len(self.data))):
             if self.data[i][0] == index:
                 pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]])
-                # features.append([self.data[i][2], self.data[i][4]])
-                features.append([self.data[i][5], self.data[i][6], self.data[i][7]])
+                features.append([self.data[i][9]])
+                # features.append([self.data[i][1], self.data[i][2], self.data[i][3], self.data[i][4]])
+                # features.append([self.data[i][5], self.data[i][6], self.data[i][7]])
                 mom.append(self.data[i][5])
             else:
                 if len(pos_data) > 5:
@@ -67,8 +70,9 @@ class DataManager():
                     ])
                 index += 1
                 pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]]
-                # features = [[self.data[i][2], self.data[i][4]]]
-                features = [[self.data[i][5], self.data[i][6], self.data[i][7]]]
+                features = [[self.data[i][9]]]
+                # features = [[self.data[i][1], self.data[i][2], self.data[i][3], self.data[i][4]]]
+                # features = [[self.data[i][5], self.data[i][6], self.data[i][7]]]
                 mom = [self.data[i][5]]
 
         return data
@@ -94,7 +98,7 @@ valid_dataloader = DataLoader(valid_data, batch_size=batch_size, num_workers=8, 
 class GNNmodel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = GCNConv(3, 100)
+        self.conv1 = GCNConv(1, 100)
         self.conv2 = GCNConv(100, 200)
         self.linear1 = nn.Linear(200,100)
         self.linear2 = nn.Linear(100,1)
@@ -198,19 +202,22 @@ def learning(model, train_loader, valid_loader, loss_function, optimizer, n_epoc
     return dict_data
 
 dict_data = learning( model, train_dataloader, valid_dataloader, criterion, optimizer, num_epochs )
-torch.save(model.state_dict(), 'model_woap.pt')
+torch.save(model.state_dict(), 'model_pos.pt')
 
-import csv
-tmp1 = np.array(dict_data["train"]["loss"])
-tmp2 = np.array(dict_data["valid"]["loss"])
-tmp3 = np.array(dict_data["train"]["time"])
-buf = np.vstack([tmp1, tmp2, tmp3]).T
-with open("without_apex.csv", mode = "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["train_loss", "valid_loss", "train_time"])
-    for line in buf:
-        writer.writerow(line)
+# import csv
+# tmp1 = np.array(dict_data["train"]["loss"])
+# tmp2 = np.array(dict_data["valid"]["loss"])
+# tmp3 = np.array(dict_data["train"]["time"])
+# buf = np.vstack([tmp1, tmp2, tmp3]).T
+# with open("without_apex.csv", mode = "w", newline="") as f:
+#     writer = csv.writer(f)
+#     writer.writerow(["train_loss", "valid_loss", "train_time"])
+#     for line in buf:
+#         writer.writerow(line)
+
+discord.post(content="finish estimate_mom.py")
 
 # plt.plot(dict_data["train"]["loss"])
 # plt.plot(dict_data["valid"]["loss"])
 # plt.show()
+    

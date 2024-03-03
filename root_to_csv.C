@@ -22,8 +22,37 @@
 #include "TTreeReader.h"
 #include "TParticle.h"
 #include "TTreeReaderArray.h"
+#include "TLorentzVector.h"
 
 #include "include/padHelper.hh"
+
+static const Double_t N_a = 6.02214076   * TMath::Power(10,  23);  // mol^-1
+static const Double_t r_e = 2.8179403262 * TMath::Power(10, -13);  // cm
+static const Double_t m_e = 0.5109989461;                        // MeV/c^2
+static const Double_t m_p = 938.2720813;                         // MeV/c^2
+static const Double_t e   = 1.60217662   * TMath::Power(10, -19);  // C
+static const Double_t c   = 2.99792458   * TMath::Power(10,   8);  // m/s
+static const Double_t rho = 0.0016755;                           // g/cm^3
+
+Double_t bethe(TLorentzVector LV, Int_t Z, Int_t A, Int_t z, Double_t M = m_p){
+
+    Double_t beta = LV.Beta();
+    Double_t gamma = LV.Gamma();
+    Double_t delta = 0;
+    Double_t C = 0;
+    Double_t I = (12*Z + 7) * TMath::Power(10, -6);
+    if (13 <= Z) I = (9.76 + 58.8*TMath::Power(Z, -1.19) ) * Z * TMath::Power(10, -6);
+    Double_t eta = beta*gamma;
+    Double_t s = m_e / M;
+    Double_t W_max = 2*m_e*eta*eta / ( 1 + 2*s*TMath::Sqrt( 1 + eta*eta ) + s*s );
+    
+    Double_t coefficient  = 2 * TMath::Pi() * N_a * r_e*r_e * m_e;
+    Double_t correct_term = TMath::Log( 2 * m_e * gamma*gamma * beta*beta * W_max / (I*I) ) - 2*beta*beta - delta - 2*C/Z;
+
+    Double_t dedx = coefficient * rho * Z/A * z*z / (beta*beta) * correct_term;
+
+    return dedx;
+}
 
 void analyze(TString path, Int_t max_iter){
 
@@ -45,12 +74,13 @@ void analyze(TString path, Int_t max_iter){
     for (Int_t i = sla_index+1; i < dot_index; i++) save_name += path[i];
     system(Form("rm ./csv_data/%s.csv", save_name.Data()));
     std::ofstream ofs(Form("./csv_data/%s.csv", save_name.Data()), std::ios::app);
-    ofs << "evnum,x,y,z,pad_id,mom\n";
+    ofs << "evnum,x,y,z,pad_id,mom,px,py,pz,dE\n";
 
     // -- event selection and write --------------------------------
     Int_t pad_id = 0, counter = 0;
-    Double_t offset = 300.0;
+    Double_t dedx;
     TVector3 mom;
+    TLorentzVector LV;
     reader.Restart();
     while (reader.Next() ){
         if (counter > max_iter) break;
@@ -60,10 +90,13 @@ void analyze(TString path, Int_t max_iter){
             x.push_back(p_tpc.Vx());
             z.push_back(p_tpc.Vz());
             mom.SetXYZ( p_tpc.Px(), p_tpc.Py(), p_tpc.Pz() );
+            LV.SetXYZM( p_tpc.Px(), p_tpc.Py(), p_tpc.Pz(), m_p );
             pad_id = padHelper::findPadID(p_tpc.Vz(), p_tpc.Vx());
+            dedx = bethe(LV, 18, 40, 1, m_p);
             // std::cout << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << std::endl;
-            // if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx()+offset << "," << p_tpc.Vy()+offset << "," << p_tpc.Vz()+offset << "," << pad_id << "," << mom.Mag() << "\n";
-            if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx()+offset << "," << p_tpc.Vy()+offset << "," << p_tpc.Vz()+offset << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "\n";
+            // if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "\n";
+            if      (dedx > 0 &&    0 <= pad_id && pad_id <  1345) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "," << dedx*0.9  << "\n";
+            else if (dedx > 0 && 1345 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "," << dedx*1.25 << "\n";
         }
         counter++;
     }

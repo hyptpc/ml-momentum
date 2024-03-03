@@ -8,4 +8,3 @@ csv_data/gen7208.csv
 csv_data/test7208.csv
 *.csv
 *.pt
-stdout_tpcdata*

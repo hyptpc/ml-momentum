@@ -113,19 +113,29 @@ class GNNmodel(nn.Module):
 
 model = GNNmodel().to(device)
 
-# model_from_weight = GNNmodel()
-# model_from_weight.load_state_dict(torch.load('model.pt', map_location=device))
+# model_from_weight = GNNmodel().to(device)
+# model_from_weight.load_state_dict(torch.load('model2.pth', map_location=device))
 
 # test7208 = DataManager("./csv_data/test7208.csv")
 # test = test7208.load_data()
 # test_dataloader = DataLoader(test, num_workers=8)
 
-# model.eval() # eval mode
+# mom = []
+
+# model_from_weight.eval() # eval mode
 # with torch.no_grad(): # invalidate grad
 #     for inputs, labels in test_dataloader:
-#         inputs.to(device=device)    
-#         outputs = model(inputs)
-#         print(outputs, labels)
+#         inputs.to(device=device)
+#         outputs = model_from_weight(inputs)
+#         # print(outputs.item(), labels.item())
+#         mom.append([outputs.item(), labels.item()])
+
+# mom = np.array(mom)
+# plt.plot(mom[:, 0], mom[:, 1], "o")
+# plt.show()
+
+# plt.hist(mom[:, 0] - mom[:, 1], bins = 100)
+# plt.show()
 
 # sys.exit()
 
@@ -142,22 +152,26 @@ dataloaders_dict = {
     'val'  : valid_dataloader
 }
 
+scaler = torch.cuda.amp.GradScaler()
+
 def train_model(model, train_loader, loss_function, optimizer):
     train_loss = 0.0
     num_train  = 0
     model.train() # train mode
     for inputs, labels in train_loader:
-        inputs.to(device=device)
+        inputs.to(device)
         num_train += len(labels) # count batch number
         optimizer.zero_grad() # initialize grad, ここで初期化しないと過去の重みがそのまま足される
-        #1 forward
-        outputs = model(inputs)
-        #2 calculate loss
-        loss = loss_function(outputs, labels.to(device=device))
+        with torch.autocast(device_type='cuda', dtype=torch.float16):
+            #1 forward
+            outputs = model(inputs)
+            #2 calculate loss
+            loss = loss_function(outputs, labels.to(device))
         #3 calculate grad, ここで勾配を計算
-        loss.backward()
+        scaler.scale(loss).backward()
         #4 update parameters, optimizerに従って勾配をもとに重みづけ
-        optimizer.step()
+        scaler.step(optimizer)
+        scaler.update()
         # 損失関数と正答率を計算して足し上げ
         train_loss += loss.item() * inputs.size(0)
     train_loss = train_loss / num_train
@@ -171,8 +185,9 @@ def valid_model(model, valid_loader, loss_function):
         for inputs, labels in valid_loader:
             inputs.to(device=device)
             num_valid += len(labels)
-            outputs = model(inputs)
-            loss = loss_function(outputs, labels.to(device=device))
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                outputs = model(inputs)
+                loss = loss_function(outputs, labels.to(device))
             valid_loss += loss.item() * inputs.size(0)
         valid_loss = valid_loss / num_valid
     return valid_loss
@@ -198,14 +213,14 @@ def learning(model, train_loader, valid_loader, loss_function, optimizer, n_epoc
     return dict_data
 
 dict_data = learning( model, train_dataloader, valid_dataloader, criterion, optimizer, num_epochs )
-torch.save(model.state_dict(), 'model_woap.pt')
+torch.save(model.state_dict(), 'model_wap.pt')
 
 import csv
 tmp1 = np.array(dict_data["train"]["loss"])
 tmp2 = np.array(dict_data["valid"]["loss"])
 tmp3 = np.array(dict_data["train"]["time"])
 buf = np.vstack([tmp1, tmp2, tmp3]).T
-with open("without_apex.csv", mode = "w", newline="") as f:
+with open("with_apex.csv", mode = "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["train_loss", "valid_loss", "train_time"])
     for line in buf:

@@ -33,7 +33,6 @@ void analyze(TString path, Int_t max_iter){
     auto *f = new TFile(path.Data());
 
     TTreeReader reader("g4hyptpc", f);
-    TTreeReaderValue<Int_t> evnum(reader, "evnum");
     TTreeReaderValue<std::vector<TParticle>> TPC(reader,  "TPC");
 
     // +------------------------------------+
@@ -49,11 +48,12 @@ void analyze(TString path, Int_t max_iter){
     ofs << "evnum,x,y,z,pad_id,mom\n";
 
     // -- event selection and write --------------------------------
-    Int_t pad_id = 0;
+    Int_t pad_id = 0, counter = 0;
+    Double_t offset = 300.0;
     TVector3 mom;
     reader.Restart();
     while (reader.Next() ){
-        if (*evnum > max_iter) break;
+        if (counter > max_iter) break;
         std::vector<Double_t> x;
         std::vector<Double_t> z;
         for(const auto& p_tpc : (*TPC)) {
@@ -61,9 +61,11 @@ void analyze(TString path, Int_t max_iter){
             z.push_back(p_tpc.Vz());
             mom.SetXYZ( p_tpc.Px(), p_tpc.Py(), p_tpc.Pz() );
             pad_id = padHelper::findPadID(p_tpc.Vz(), p_tpc.Vx());
-            // std::cout << *evnum << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << std::endl;
-            if (0 <= pad_id && pad_id <= 5768) ofs << *evnum << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "\n";
+            // std::cout << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << std::endl;
+            // if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx()+offset << "," << p_tpc.Vy()+offset << "," << p_tpc.Vz()+offset << "," << pad_id << "," << mom.Mag() << "\n";
+            if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx()+offset << "," << p_tpc.Vy()+offset << "," << p_tpc.Vz()+offset << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "\n";
         }
+        counter++;
     }
 
     ofs.close();

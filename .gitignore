@@ -1,10 +1,8 @@
-makefile
 obj/*
-src/*
-include/macro.hh
-include/nagao_macro.hh
-include/variable.hh
-csv_data/gen7208.csv
-csv_data/test7208.csv
+csv_data/gen7208*.csv
+csv_data/test7208*.csv
 *.csv
 *.pt
+discord_url.py
+model/*
+test.py

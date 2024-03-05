@@ -45,14 +45,14 @@ class DataManager():
             edge_to   += np.argsort(distance)[1:n_edge+1].tolist()
             edge_attr += distance[ np.argsort(distance)[1:n_edge+1] ].tolist()
         edge_index = torch.tensor([edge_from, edge_to])
-        return Data(x=torch.tensor(features), y=None, edge_index=edge_index, edge_attr=edge_attr)
+        return Data(x=torch.tensor(features), y=None, edge_index=edge_index, edge_attr=torch.tensor(edge_attr))
 
-    def load_data(self):
+    def load_data(self, isDebug = False):
         index = 0
         pos_data = []
         features = []
         mom      = []
-        data     = []
+        dataset  = []
         for i in tqdm(range(len(self.data))):
             if self.data[i][0] == index:
                 pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]])
@@ -61,17 +61,33 @@ class DataManager():
                 mom.append(self.data[i][5])
             else:
                 if len(pos_data) > 5:
-                    data.append([ 
-                        self.convert_graph_data(np.array(pos_data), features), 
+                    graph_data = self.convert_graph_data(np.array(pos_data), features)
+                    dataset.append([ 
+                        graph_data, 
                         statistics.mean(mom)
                     ])
-                index += 1
+                    if isDebug:
+                        nxg = to_networkx(graph_data)
+                        fig = plt.figure(figsize=(8, 4))
+                        ax1 = fig.add_subplot(121)
+                        ax2 = fig.add_subplot(122)
+                        for j, pos in enumerate(pos_data):
+                            ax1.scatter( pos[0], pos[2], color = "k", marker="${}$".format(j))
+                        nx.draw(nxg,
+                                node_color = 'w',
+                                edgecolors = 'k', # node border color
+                                with_labels = True,
+                                edge_color = graph_data.edge_attr.mul(1/graph_data.edge_attr.max()).tolist(),
+                                edge_cmap = plt.cm.plasma,
+                                alpha = 0.5, ax=ax2)
+                        plt.show()
                 pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]]
                 # features = [[self.data[i][2], self.data[i][4]]]
                 features = [[self.data[i][5], self.data[i][6], self.data[i][7]]]
                 mom = [self.data[i][5]]
+                index += 1
 
-        return data
+        return dataset
 
 def shuffle_list_data(data, ratio = 0.2):
     n_data = len(data)
@@ -79,8 +95,8 @@ def shuffle_list_data(data, ratio = 0.2):
     shuffled_data = random.sample(data, n_data)
     return shuffled_data[n_valid_data:], shuffled_data[:n_valid_data]
 
-gen7208 = DataManager("./csv_data/gen7208.csv")
-data = gen7208.load_data()
+gen7208 = DataManager("./csv_data/test7208.csv")
+data = gen7208.load_data(True)
 
 # 学習データと検証データに分割
 train_data, valid_data = shuffle_list_data(data)
@@ -100,10 +116,10 @@ class GNNmodel(nn.Module):
         self.linear2 = nn.Linear(100,1)
 
     def forward(self, data):
-        x, edge_index = data.x.float(), data.edge_index
-        x = self.conv1(x, edge_index)
+        x, edge_index, edge_attr = data.x.float(), data.edge_index, data.edge_attr
+        x = self.conv1(x, edge_index, edge_weight=edge_attr)
         x = F.silu(x)
-        x = self.conv2(x, edge_index)
+        x = self.conv2(x, edge_index,  edge_weight=edge_attr)
         x = F.silu(x)
         x = global_mean_pool(x, data.batch)
         x = self.linear1(x)

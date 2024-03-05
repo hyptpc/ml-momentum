@@ -46,7 +46,7 @@ class DataManager():
             edge_to   += np.argsort(distance)[1:n_edge+1].tolist()
             edge_attr += distance[ np.argsort(distance)[1:n_edge+1] ].tolist()
         edge_index = torch.tensor([edge_from, edge_to])
-        return Data(x=torch.tensor(features), y=None, edge_index=edge_index, edge_attr=edge_attr)
+        return Data(x=torch.tensor(features), y=None, edge_index=edge_index, edge_attr=torch.tensor(edge_attr))
 
     def load_data(self):
         index = 0
@@ -57,8 +57,9 @@ class DataManager():
         for i in tqdm(range(len(self.data))):
             if self.data[i][0] == index:
                 pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]])
-                # features.append([self.data[i][2], self.data[i][4]])
-                features.append([self.data[i][5], self.data[i][6], self.data[i][7]])
+                features.append([self.data[i][9]])
+                # features.append([self.data[i][1], self.data[i][2], self.data[i][3], self.data[i][4]])
+                # features.append([self.data[i][5], self.data[i][6], self.data[i][7]])
                 mom.append(self.data[i][5])
             else:
                 if len(pos_data) > 5:
@@ -68,27 +69,27 @@ class DataManager():
                     ])
                 index += 1
                 pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]]
-                # features = [[self.data[i][2], self.data[i][4]]]
-                features = [[self.data[i][5], self.data[i][6], self.data[i][7]]]
+                features = [[self.data[i][9]]]
+                # features = [[self.data[i][1], self.data[i][2], self.data[i][3], self.data[i][4]]]
+                # features = [[self.data[i][5], self.data[i][6], self.data[i][7]]]
                 mom = [self.data[i][5]]
 
         return data
-
 
 # modelの作成とその中身確認
 class GNNmodel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = GCNConv(3, 100)
+        self.conv1 = GCNConv(1, 100)
         self.conv2 = GCNConv(100, 200)
         self.linear1 = nn.Linear(200,100)
         self.linear2 = nn.Linear(100,1)
 
     def forward(self, data):
-        x, edge_index = data.x.float(), data.edge_index
-        x = self.conv1(x, edge_index)
+        x, edge_index, edge_attr = data.x.float(), data.edge_index, data.edge_attr
+        x = self.conv1(x, edge_index, edge_weight=edge_attr)
         x = F.silu(x)
-        x = self.conv2(x, edge_index)
+        x = self.conv2(x, edge_index,  edge_weight=edge_attr)
         x = F.silu(x)
         x = global_mean_pool(x, data.batch)
         x = self.linear1(x)
@@ -99,7 +100,7 @@ class GNNmodel(nn.Module):
 model = GNNmodel().to(device)
 
 model_from_weight = GNNmodel().to(device)
-model_from_weight.load_state_dict(torch.load('model_wap.pt', map_location=device))
+model_from_weight.load_state_dict(torch.load('model_edep.pt', map_location=device))
 
 test7208 = DataManager("./csv_data/test7208.csv")
 test = test7208.load_data()
@@ -114,15 +115,25 @@ with torch.no_grad(): # invalidate grad
     for inputs, labels in test_dataloader:
         inputs.to(device=device)
         outputs = model_from_weight(inputs)
-        # print(outputs.item(), labels.item())
         pred_mom = torch.cat((pred_mom, outputs))
         mom = torch.cat((mom, labels.to(device)))
         # mom.append([outputs.item(), labels.item()])
-        print( pred_mom )
 
-mom = np.array(mom)
-plt.plot(mom[:, 0], mom[:, 1], "o")
+# mom = np.array(mom)
+# plt.plot(mom[:, 0], mom[:, 1], "o")
+# plt.show()
+
+# plt.hist((mom[:, 0] - mom[:, 1])/mom[:, 1], bins = 100)
+# plt.show()
+
+mom = mom.cpu()
+pred_mom = pred_mom.cpu()
+
+plt.plot(mom, pred_mom, "o")
+plt.xlabel("proton momentum [MeV/c]")
+plt.ylabel("predicted momentum [MeV/c]")
 plt.show()
 
-plt.hist((mom[:, 0] - mom[:, 1])/mom[:, 1], bins = 100)
+plt.hist((mom - pred_mom)/mom, bins = np.linspace(-0.015, 0.015, 31))
+# plt.hist((mom - pred_mom)/mom, bins = 100)
 plt.show()

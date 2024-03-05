@@ -49,7 +49,7 @@ class DataManager():
         )
         return graph_data
 
-    def load_data(self, isDebug = False):
+    def load_data(self, fwhm_percent = 0, isDebug = False):
         index = 0
         pos_data = []
         features = []
@@ -62,17 +62,28 @@ class DataManager():
                 mom.append(self.data[i][5]) # momentum
             else:
                 if len(pos_data) > 5:
-                    graph_data = self.convert_graph_data(np.array(pos_data), features)
-                    dataset.append([ 
-                        graph_data,
-                        statistics.mean(mom)
-                    ])
+                    if (fwhm_percent == 0):
+                        graph_data = self.convert_graph_data(np.array(pos_data), features)
+                        dataset.append([ 
+                            graph_data,
+                            statistics.mean(mom)
+                        ])
+                    else:
+                        rng = np.random.default_rng()
+                        for _ in range(100):    # 100は適当に決めてる
+                            rand_features = [[rng.normal(edep[0], edep[0]*fwhm_percent/2.35)] for edep in features]
+                            graph_data = self.convert_graph_data(np.array(pos_data), rand_features)
+                            dataset.append([ 
+                                graph_data,
+                                statistics.mean(mom)
+                            ])
                     # --------------------------------------
                     # draw graph data
                     # --------------------------------------
                     if isDebug:
+                        plt.rcParams['font.size'] = 18
                         nxg = to_networkx(graph_data)
-                        fig = plt.figure(figsize=(8, 4))
+                        fig = plt.figure(figsize=(10, 6))
                         ax1 = fig.add_subplot(121)
                         ax2 = fig.add_subplot(122)
                         for j, pos in enumerate(pos_data):

@@ -1,26 +1,13 @@
-# import numpy as np
-# from tqdm import tqdm
-# import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
-# def lr_func(epoch):
-#     lr_adam = 0.001
-#     lr_init = lr_adam*100
-#     return np.where( epoch < 5, lr_init, lr_init*np.exp(-(epoch-5)/3)+lr_adam )
+rng = np.random.default_rng()
+x = rng.normal(505.1, 505.1*0.1/2.35, 300)
+y = rng.normal(505.1, 505.1*0.1, 300)
 
-# x = np.linspace(0, 100)
-# y = lr_func(x)
+plt.hist(x, bins = np.linspace(400, 600, 50), alpha = 0.5)
+plt.hist(y, bins = np.linspace(400, 600, 50), alpha = 0.5)
 
-# plt.plot(x, y)
-# plt.hlines(0.001, 0, 100)
-# plt.show()
 
-import datetime
-
-n = datetime.datetime.now()
-print("{}{:0=2}{:0=2}-{:0=2}{:0=2}{:0=2}".format(n.year, n.month, n.day, n.hour, n.minute, n.second))
-
-def a(x, y = None):
-    print(x)
-    print(y==None)
-
-a(1)
+plt.show()

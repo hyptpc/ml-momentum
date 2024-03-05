@@ -81,9 +81,6 @@ void analyze(TString path, Int_t max_iter){
     // -- event selection and write --------------------------------
     Int_t pad_id = 0, counter = 0;
     Double_t dedx, dedx_bethe;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    TRandom rand( gen() );
     TVector3 mom;
     TLorentzVector LV;
     reader.Restart();
@@ -99,8 +96,7 @@ void analyze(TString path, Int_t max_iter){
             LV.SetXYZM( p_tpc.Px(), p_tpc.Py(), p_tpc.Pz(), m_p );
             pad_id = padHelper::findPadID(p_tpc.Vz(), p_tpc.Vx());
             if (pad_id != past_pad_id) {
-                dedx_bethe = bethe(LV, 18, 40, 1, m_p);
-                dedx = rand.Gaus( dedx_bethe, dedx_bethe*0.1 );
+                dedx = bethe(LV, 18, 40, 1, m_p);
                 // std::cout << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << std::endl;
                 // if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "\n";
                 if      (dedx > 0 &&    0 <= pad_id && pad_id <  1345) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "," << dedx*0.9  << "\n";

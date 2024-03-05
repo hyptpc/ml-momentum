@@ -31,7 +31,7 @@ num_epochs = 100
 
 # データ読み込み
 gen7208 = mod.DataManager("./csv_data/gen7208_0%.csv")
-data = gen7208.load_data()
+data = gen7208.load_data(isDebug=True)
 
 # 学習データと検証データに分割
 train_data, valid_data = mod.shuffle_list_data(data)

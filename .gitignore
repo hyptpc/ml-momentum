@@ -6,3 +6,4 @@ csv_data/test7208*.csv
 discord_url.py
 model/*
 test.py
+stdout*

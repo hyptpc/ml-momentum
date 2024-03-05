@@ -76,6 +76,8 @@ class DataManager():
                         ax2 = fig.add_subplot(122)
                         for j, pos in enumerate(pos_data):
                             ax1.scatter( pos[0], pos[2], color = "k", marker="${}$".format(j))
+                        ax1.set_xlabel("X")
+                        ax1.set_ylabel("Z")
                         nx.draw(nxg,
                                 node_color = 'w',
                                 edgecolors = 'k', # node border color

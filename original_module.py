@@ -8,6 +8,7 @@ import os
 import random
 import time
 import datetime
+import csv
 
 # pytouch
 import torch
@@ -100,6 +101,17 @@ def shuffle_list_data(data, ratio = 0.2):
     shuffled_data = random.sample(data, n_data)
     return shuffled_data[n_valid_data:], shuffled_data[:n_valid_data]
 
+def save_history(dict_data, save_path):
+    train_loss = np.array(dict_data["train"]["loss"])
+    valid_loss = np.array(dict_data["valid"]["loss"])
+    train_time = np.array(dict_data["train"]["time"])
+    buf = np.vstack([train_loss, valid_loss, train_time]).T
+    with open("{}/history.csv".format(save_path), mode = "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["train_loss", "valid_loss", "train_time"])
+        for line in buf:
+            writer.writerow(line)
+
 def train_model(model, train_loader, loss_function, optimizer, device):
     train_loss = 0.0
     num_train  = 0
@@ -161,5 +173,6 @@ def learning(device, model, train_loader, valid_loader, loss_function, optimizer
         "train": { "loss" : train_loss_list, "time" : train_time_list },
         "valid": { "loss" : valid_loss_list },
     }
+    save_history(dict_data, save_path)
 
     return dict_data

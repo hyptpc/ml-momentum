@@ -30,8 +30,8 @@ output_dim = 1  # num of output size  (momentum)
 num_epochs = 100
 
 # データ読み込み
-gen7208 = mod.DataManager("./csv_data/gen7208_0%.csv")
-data = gen7208.load_data(isDebug=True)
+gen7208 = mod.DataManager("./csv_data/gen7208.csv")
+data = gen7208.load_data(isDebug=False)
 
 # 学習データと検証データに分割
 train_data, valid_data = mod.shuffle_list_data(data)
@@ -67,7 +67,7 @@ model = GNNmodel().to(device)
 # 損失関数などの定義
 criterion = nn.MSELoss().to(device)
 optimizer = optim.Adam(model.parameters(), lr = 0.01)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor=0.5, patience=7, min_lr=0.001)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor=0.5, patience=5, min_lr=0.001)
 
 # 学習時と検証時で分けるためディクショナリを用意
 dataloaders_dict = {

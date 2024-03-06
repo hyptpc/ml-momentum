@@ -50,13 +50,13 @@ class DataManager():
         return graph_data
 
     def load_data(self, fwhm_percent = 0, isDebug = False):
-        index = 0
+        evnum = 0
         pos_data = []
         features = []
         mom      = []
         dataset  = []
         for i in tqdm(range(len(self.data))):
-            if self.data[i][0] == index:
+            if self.data[i][0] == evnum:
                 pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]]) # [x, y, z]
                 features.append([self.data[i][9]]) # energy deposit
                 mom.append(self.data[i][5]) # momentum
@@ -70,7 +70,7 @@ class DataManager():
                         ])
                     else:
                         rng = np.random.default_rng()
-                        for _ in range(100):    # 100は適当に決めてる
+                        for _ in range(10):    # 10は適当に決めてる
                             rand_features = [[rng.normal(edep[0], edep[0]*fwhm_percent/2.35)] for edep in features]
                             graph_data = self.convert_graph_data(np.array(pos_data), rand_features)
                             dataset.append([ 
@@ -102,7 +102,7 @@ class DataManager():
                 pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]] # [x, y, z]
                 features = [[self.data[i][9]]] # energy deposit
                 mom = [self.data[i][5]] # momentum
-                index += 1
+                evnum += 1
         return dataset
 
 def shuffle_list_data(data, ratio = 0.2):

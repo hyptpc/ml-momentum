@@ -29,7 +29,7 @@ import original_module as mod
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # モデルの重みデータのパス
-model_path = "model/20240306-003512/model_0001.pt"
+model_path = "model/20240306-003918/model_0094.pt"
 
 # input, output sizeの設定
 input_dim  = 1  # num of edge feature (energy deposit)
@@ -88,8 +88,9 @@ fig = plt.figure(figsize=(10, 6))
 ax1 = fig.add_subplot(121)
 ax2 = fig.add_subplot(122)
 ax1.plot(mom, pred_mom, "o")
+ax1.plot( [mom.min(), mom.max()], [mom.min(), mom.max()], "--", color = "C3" )
 ax1.set_xlabel("proton momentum [MeV/c]")
 ax1.set_ylabel("predicted momentum [MeV/c]")
-ax2.hist((mom - pred_mom)/mom, bins = np.linspace(-0.015, 0.015, 31))
-ax2.set_xlabel(r"$\Delta p/p$")
+ax2.hist((mom - pred_mom)/mom*100, bins = np.linspace(-1.5, 1.5, 101))
+ax2.set_xlabel(r"$\Delta p/p$ [%]")
 plt.show()

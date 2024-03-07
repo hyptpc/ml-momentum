@@ -80,7 +80,7 @@ void analyze(TString path, Int_t max_iter){
 
     // -- event selection and write --------------------------------
     Int_t pad_id = 0, counter = 0;
-    Double_t past_E;
+    Double_t dedx, dedx_bethe;
     TVector3 mom;
     TLorentzVector LV;
     reader.Restart();
@@ -88,23 +88,19 @@ void analyze(TString path, Int_t max_iter){
         if (counter > max_iter) break;
         std::vector<Double_t> x;
         std::vector<Double_t> z;
-        Int_t past_pad_id = -1;
-        past_E = -1.;
+        Double_t past_pad_id = -1;
         for(const auto& p_tpc : (*TPC)) {
             x.push_back(p_tpc.Vx());
             z.push_back(p_tpc.Vz());
             mom.SetXYZ( p_tpc.Px(), p_tpc.Py(), p_tpc.Pz() );
             LV.SetXYZM( p_tpc.Px(), p_tpc.Py(), p_tpc.Pz(), m_p );
-            if (past_E == -1.) {
-                past_E = LV.E();
-                continue;
-            }
             pad_id = padHelper::findPadID(p_tpc.Vz(), p_tpc.Vx());
             if (pad_id != past_pad_id) {
+                dedx = bethe(LV, 18, 40, 1, m_p);
                 // std::cout << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << std::endl;
                 // if (0 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "\n";
-                if (0 <= pad_id && pad_id <=  5768) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "," << (Double_t) past_E - LV.E() + 1.0 << "\n";
-                past_E = LV.E();
+                if      (dedx > 0 &&    0 <= pad_id && pad_id <  1345) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "," << dedx*0.9  << "\n";
+                else if (dedx > 0 && 1345 <= pad_id && pad_id <= 5768) ofs << counter << "," << p_tpc.Vx() << "," << p_tpc.Vy() << "," << p_tpc.Vz() << "," << pad_id << "," << mom.Mag() << "," << p_tpc.Px() << "," << p_tpc.Py() << "," << p_tpc.Pz() << "," << dedx*1.25 << "\n";
                 past_pad_id = pad_id;
             }
         }

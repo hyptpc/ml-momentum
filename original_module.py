@@ -36,11 +36,20 @@ class DataManager():
         edge_from = []
         edge_to   = []
         edge_attr = []
+        features  = []
+        past_pos  = pos_data[0]
         for i, point in enumerate(pos_data):
             distance = np.linalg.norm( pos_data - np.full_like(pos_data, point), axis = 1) # calc. Euclidean distance
             edge_from += [i]*n_edge
             edge_to   += np.argsort(distance)[1:n_edge+1].tolist()
             edge_attr += distance[ np.argsort(distance)[1:n_edge+1] ].tolist()
+            diff = pos_data[i] - past_pos
+            dis = np.linalg.norm( diff )
+            if (dis != 0):
+                features.append( diff/dis )
+            else:
+                features.append( [0., 0., 0.] )
+            past_pos = pos_data[i]
         graph_data = Data(
             x          = torch.tensor(features),             # node feature
             y          = None,                               # node label
@@ -49,7 +58,7 @@ class DataManager():
         )
         return graph_data
 
-    def load_data(self, fwhm_percent = 0, isDebug = False):
+    def load_data(self, fwhm = 0, isDebug = False):
         evnum = 0
         pos_data = []
         features = []
@@ -62,20 +71,21 @@ class DataManager():
                 mom.append(self.data[i][5]) # momentum
             else:
                 if len(pos_data) > 5:
-                    if (fwhm_percent == 0):
-                        graph_data = self.convert_graph_data(np.array(pos_data), features)
+                    if (fwhm == 0):
+                        graph_data = self.convert_graph_data(np.array(pos_data), features, 2)
                         dataset.append([ 
                             graph_data,
                             statistics.mean(mom)
                         ])
                     else:
                         rng = np.random.default_rng()
-                        for _ in range(10):    # 10は適当に決めてる
-                            rand_features = [[rng.normal(edep[0], edep[0]*fwhm_percent/2.35)] for edep in features]
+                        for _ in range(3):    # 10は適当に決めてる
+                            rand_features = [[rng.normal(edep[0], edep[0]*fwhm/2.35)] for edep in features]
                             graph_data = self.convert_graph_data(np.array(pos_data), rand_features)
                             dataset.append([ 
                                 graph_data,
-                                statistics.mean(mom)
+                                # statistics.mean(mom),
+                                mom[0]
                             ])
                     # --------------------------------------
                     # draw graph data

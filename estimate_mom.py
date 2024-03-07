@@ -1,6 +1,14 @@
 # normal
+import numpy as np
+from tqdm import tqdm
 import matplotlib.pyplot as plt
+import statistics
 import sys
+import os
+import random
+import time
+import datetime
+import csv
 
 # pytouch
 import torch
@@ -23,15 +31,15 @@ import original_module as mod
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # input, output sizeの設定
-input_dim  = 1  # num of edge feature (energy deposit)
+input_dim  = 3 # num of edge feature (energy deposit)
 output_dim = 1  # num of output size  (momentum)
 
 # エポック数
-num_epochs = 100
+num_epochs = 150
 
 # データ読み込み
-gen7208 = mod.DataManager("./csv_data/test7208.csv")
-data = gen7208.load_data(fwhm_percent=0., isDebug=True)
+gen7208 = mod.DataManager("./csv_data/gen7208_EM0.csv")
+data = gen7208.load_data(isDebug=0)
 
 # 学習データと検証データに分割
 train_data, valid_data = mod.shuffle_list_data(data)
@@ -67,7 +75,7 @@ model = GNNmodel().to(device)
 # 損失関数などの定義
 criterion = nn.MSELoss().to(device)
 optimizer = optim.Adam(model.parameters(), lr = 0.01)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor=0.5, patience=5, min_lr=0.001)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor=0.5, patience=3, min_lr=0.0001)
 
 # 学習時と検証時で分けるためディクショナリを用意
 dataloaders_dict = {

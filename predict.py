@@ -33,14 +33,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # モデルの重みデータのパス
 # model_path = "model/20240306-003918/model_0094.pt"
 # model_path = "model/20240306-090429/model_0197.pt"
-model_path = "model/20240307-214232/model_0149.pt"
+model_path = "model/20240312-001656/model_0048.pt"
 
 # input, output sizeの設定
 input_dim  = 3  # num of edge feature (energy deposit)
 output_dim = 1  # num of output size  (momentum)
 
 # テストデータを読み込んでデータローダー作成
-test7208 = mod.DataManager("./csv_data/test7208_EM0.csv")
+test7208 = mod.DataManager("./csv_data/test7208.csv")
 test = test7208.load_data()
 batch_size = 64
 num_workers=8
@@ -50,10 +50,12 @@ test_dataloader = DataLoader(test, batch_size=batch_size, num_workers=num_worker
 class GNNmodel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = GCNConv(input_dim, 100)
-        self.conv2 = GCNConv(100, 200)
-        self.linear1 = nn.Linear(200, 100)
-        self.linear2 = nn.Linear(100, output_dim)
+        self.conv1 = GCNConv(input_dim, 16)
+        self.conv2 = GCNConv(16, 64)
+        self.conv3 = GCNConv(64, 256)
+        self.linear1 = nn.Linear(256, 128)
+        self.linear2 = nn.Linear(128, 64)
+        self.linear3 = nn.Linear(64, output_dim)
 
     def forward(self, data):
         x, edge_index, edge_attr = data.x.float(), data.edge_index, data.edge_attr
@@ -61,10 +63,14 @@ class GNNmodel(nn.Module):
         x = F.silu(x)
         x = self.conv2(x, edge_index, edge_weight=edge_attr)
         x = F.silu(x)
+        x = self.conv3(x, edge_index, edge_weight=edge_attr)
+        x = F.silu(x)
         x = global_mean_pool(x, data.batch)
         x = self.linear1(x)
         x = F.silu(x)
         x = self.linear2(x)
+        x = F.silu(x)
+        x = self.linear3(x)
         return x.squeeze()
 model = GNNmodel().to(device)
 

@@ -74,6 +74,7 @@ void analyze(TString path, Int_t max_iter){
     Int_t dot_index = path.Last('.');
     Int_t sla_index = path.Last('/');
     for (Int_t i = sla_index+1; i < dot_index; i++) save_name += path[i];
+    system("mkdir ./csv_data");
     system(Form("rm ./csv_data/%s.csv", save_name.Data()));
     std::ofstream ofs(Form("./csv_data/%s.csv", save_name.Data()), std::ios::app);
     ofs << "evnum,x,y,z,pad_id,mom,px,py,pz,dE\n";

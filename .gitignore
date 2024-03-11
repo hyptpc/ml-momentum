@@ -1,9 +1,5 @@
 obj/*
-csv_data/gen7208*.csv
-csv_data/test7208*.csv
-*.csv
-*.pt
-discord_url.py
+csv_data/*
 model/*
+discord_url.py
 test.py
-stdout*

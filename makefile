@@ -19,10 +19,10 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 $(OBJDIR)%.o: %.C
-	$(CXX) $(CFLAGS) $(INCLUDE) -c -o $@ $< $(CXXLIBS) $(CXXFLAGS) -lSpectrum -lMathMore
+	$(CXX) $(CFLAGS) $(INCLUDE) -c -o $@ $< $(CXXLIBS) $(CXXFLAGS) -lSpectrum -lMathMore -ltbb
 
 $(TARGET): $(OBJS)
-	$(CXX) $(CFLAGS) $(INCLUDE) -o $@ $^ $(CXXLIBS) $(CXXFLAGS) -lSpectrum -lMathMore
+	$(CXX) $(CFLAGS) $(INCLUDE) -o $@ $^ $(CXXLIBS) $(CXXFLAGS) -lSpectrum -lMathMore -ltbb
 
 .PHONY: clean
 clean:

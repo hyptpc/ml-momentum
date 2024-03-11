@@ -90,18 +90,19 @@ dataloaders_dict = {
 }
 
 # modelなどの読み込み
-checkpoint = torch.load("model/20240311-230002/checkpoint.bin") 
+checkpoint = torch.load("model/20240312-004829/checkpoint.bin") 
 model.load_state_dict(checkpoint["model"])
 optimizer.load_state_dict(checkpoint["optimizer"])
 scheduler.load_state_dict(checkpoint["scheduler"])
 
 dict_data = mod.learning( device, model, train_dataloader, valid_dataloader, criterion, optimizer, num_epochs, scheduler )
 
+# discordで通知( https://pypi.org/project/discordwebhook/ )
 try:
     from discordwebhook import Discord
-    import discord_url
+    import discord_url  # 自作関数でurlを単に格納しているだけ
     discord = discord_url.get_discord()
-    discord.post(content="finish estimate_mom.py")
+    discord.post(content="({}) finish estimate_mom.py".format(sys.platform))
 except:
     pass
 

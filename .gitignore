@@ -1,6 +1,7 @@
 obj/*
 csv_data/*
 model/*
+__pycache__/*
 discord_url.py
 test.py
 root_to_csv

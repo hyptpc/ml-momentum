@@ -90,7 +90,7 @@ dataloaders_dict = {
 }
 
 # modelなどの読み込み
-checkpoint = torch.load("model/20240312-004829/checkpoint.bin") 
+checkpoint = torch.load("model/20240312-012520/checkpoint.bin") 
 model.load_state_dict(checkpoint["model"])
 optimizer.load_state_dict(checkpoint["optimizer"])
 scheduler.load_state_dict(checkpoint["scheduler"])

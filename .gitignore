@@ -3,3 +3,4 @@ csv_data/*
 model/*
 discord_url.py
 test.py
+root_to_csv

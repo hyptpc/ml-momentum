@@ -12,16 +12,11 @@ import csv
 
 # pytouch
 import torch
-from torch import nn
-from torch.nn import functional as F
-import torch.optim as optim
 
 # torch_geometric
 import networkx as nx
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_networkx
-from torch_geometric.nn import GCNConv, global_mean_pool, summary
 
 class DataManager():
     def __init__(self, path):

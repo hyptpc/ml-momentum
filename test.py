@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import sys
 
 # pytouch
 import torch
@@ -14,6 +15,12 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_networkx
 from torch_geometric.nn import GCNConv, global_mean_pool, summary
+
+l = [[i, i*i] for i in range(10)]
+np.random.shuffle(l)
+print(type(l))
+
+sys.exit()
 
 def convert_graph_data(pos_data, features, n_edge = 2): # should be len(pos_data) > n_egde+1
     edge_from = []

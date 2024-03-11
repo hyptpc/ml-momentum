@@ -32,7 +32,7 @@ class DataManager():
             delimiter=","
         )
 
-    def convert_graph_data(self, pos_data, features, n_edge = 2): # should be len(pos_data) > n_egde+1
+    def convert_graph_data(self, pos_data, n_edge = 2): # should be len(pos_data) > n_egde+1
         edge_from = []
         edge_to   = []
         edge_attr = []
@@ -46,7 +46,7 @@ class DataManager():
             diff = pos_data[i] - past_pos
             dis = np.linalg.norm( diff )
             if (dis != 0):
-                features.append( diff/dis )
+                features.append([ diff[0]/dis, diff[1]/dis, diff[2]/dis ])
             else:
                 features.append( [0., 0., 0.] )
             past_pos = pos_data[i]
@@ -58,35 +58,22 @@ class DataManager():
         )
         return graph_data
 
-    def load_data(self, fwhm = 0, isDebug = False):
+    def load_data(self, isDebug = False):
         evnum = 0
         pos_data = []
-        features = []
         mom      = []
         dataset  = []
         for i in tqdm(range(len(self.data))):
             if self.data[i][0] == evnum:
                 pos_data.append([self.data[i][1], self.data[i][2], self.data[i][3]]) # [x, y, z]
-                features.append([self.data[i][9]]) # energy deposit
                 mom.append(self.data[i][5]) # momentum
             else:
                 if len(pos_data) > 5:
-                    if (fwhm == 0):
-                        graph_data = self.convert_graph_data(np.array(pos_data), features, 2)
-                        dataset.append([ 
-                            graph_data,
-                            statistics.mean(mom)
-                        ])
-                    else:
-                        rng = np.random.default_rng()
-                        for _ in range(3):    # 10は適当に決めてる
-                            rand_features = [[rng.normal(edep[0], edep[0]*fwhm/2.35)] for edep in features]
-                            graph_data = self.convert_graph_data(np.array(pos_data), rand_features)
-                            dataset.append([ 
-                                graph_data,
-                                # statistics.mean(mom),
-                                mom[0]
-                            ])
+                    graph_data = self.convert_graph_data(np.array(pos_data), 2)
+                    dataset.append([ 
+                        graph_data,
+                        mom[0]
+                    ])
                     # --------------------------------------
                     # draw graph data
                     # --------------------------------------
@@ -110,7 +97,6 @@ class DataManager():
                         plt.show()
                     # --------------------------------------
                 pos_data = [[self.data[i][1], self.data[i][2], self.data[i][3]]] # [x, y, z]
-                features = [[self.data[i][9]]] # energy deposit
                 mom = [self.data[i][5]] # momentum
                 evnum += 1
         return dataset
@@ -195,5 +181,11 @@ def learning(device, model, train_loader, valid_loader, loss_function, optimizer
         "valid": { "loss" : valid_loss_list },
     }
     save_history(dict_data, save_path)
+    checkpoint = {
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict(),
+    }
+    torch.save(checkpoint, "{}/checkpoint.bin".format(save_path))
 
     return dict_data

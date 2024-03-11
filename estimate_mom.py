@@ -35,10 +35,10 @@ input_dim  = 3 # num of edge feature (energy deposit)
 output_dim = 1  # num of output size  (momentum)
 
 # エポック数
-num_epochs = 150
+num_epochs = 50
 
 # データ読み込み
-gen7208 = mod.DataManager("./csv_data/gen7208_EM0.csv")
+gen7208 = mod.DataManager("./csv_data/gen7208_EM0_1.csv")
 data = gen7208.load_data(isDebug=0)
 
 # 学習データと検証データに分割
@@ -54,10 +54,12 @@ valid_dataloader = DataLoader(valid_data, batch_size=batch_size, num_workers=num
 class GNNmodel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = GCNConv(input_dim, 100)
-        self.conv2 = GCNConv(100, 200)
-        self.linear1 = nn.Linear(200, 100)
-        self.linear2 = nn.Linear(100, output_dim)
+        self.conv1 = GCNConv(input_dim, 16)
+        self.conv2 = GCNConv(16, 64)
+        self.conv3 = GCNConv(64, 256)
+        self.linear1 = nn.Linear(256, 128)
+        self.linear2 = nn.Linear(128, 64)
+        self.linear3 = nn.Linear(64, output_dim)
 
     def forward(self, data):
         x, edge_index, edge_attr = data.x.float(), data.edge_index, data.edge_attr
@@ -65,10 +67,14 @@ class GNNmodel(nn.Module):
         x = F.silu(x)
         x = self.conv2(x, edge_index, edge_weight=edge_attr)
         x = F.silu(x)
+        x = self.conv3(x, edge_index, edge_weight=edge_attr)
+        x = F.silu(x)
         x = global_mean_pool(x, data.batch)
         x = self.linear1(x)
         x = F.silu(x)
         x = self.linear2(x)
+        x = F.silu(x)
+        x = self.linear3(x)
         return x.squeeze()
 model = GNNmodel().to(device)
 
@@ -82,6 +88,12 @@ dataloaders_dict = {
     'train': train_dataloader,
     'val'  : valid_dataloader
 }
+
+# modelなどの読み込み
+checkpoint = torch.load("model/20240311-230002/checkpoint.bin") 
+model.load_state_dict(checkpoint["model"])
+optimizer.load_state_dict(checkpoint["optimizer"])
+scheduler.load_state_dict(checkpoint["scheduler"])
 
 dict_data = mod.learning( device, model, train_dataloader, valid_dataloader, criterion, optimizer, num_epochs, scheduler )
 

@@ -1,6 +1,7 @@
 # normal
 import matplotlib.pyplot as plt
 import sys
+import argparse
 
 # pytouch
 import torch
@@ -15,6 +16,17 @@ from torch_geometric.loader import DataLoader
 import original_module as mod
 import original_model
 
+# argparse.ArgumentParserクラスをインスタンス化して、説明等を引数として渡す
+parser = argparse.ArgumentParser(
+    prog="estimate_mom",
+    usage="python3 estimate_mom.py <input_csv_file_path>", # プログラムの利用方法
+    description="training GNN-model script.", # ヘルプの前に表示
+    epilog="end", # ヘルプの後に表示
+    add_help=True, # -h/–-helpオプションの追加
+)
+parser.add_argument("input_csv_file_path", type=str, help="Input csv file path")
+args = parser.parse_args()
+
 # cpu, gpuの設定
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -26,8 +38,8 @@ output_dim = 1  # num of output size  (momentum)
 num_epochs = 50
 
 # データ読み込み
-gen7208 = mod.DataManager("./csv_data/gen7208_EM0_1.csv")
-data = gen7208.load_data(isDebug=0)
+gen7208 = mod.DataManager(args.input_csv_file_path)
+data = gen7208.load_data(isDebug=False)
 
 # 学習データと検証データに分割
 train_data, valid_data = mod.shuffle_list_data(data)

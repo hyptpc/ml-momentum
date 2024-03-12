@@ -30,3 +30,9 @@ make NAME=root2csv.C
 
 
 機械学習の実行は```estimate_mom.py```を実行すればよく、読み込むデータは内部にpathを指定するところがあるはず。
+
+bsubでjobを投げるときは目盛りを多めに使いますよのオプションを付けないとこけます
+```
+bsub -q sx python3 estimate_mom.py csv_data/gen7208_EM0_0.csv
+```
+みたいな感じ
